@@ -1,11 +1,12 @@
 package hello.jdbc.service;
 
 import hello.jdbc.domain.Member;
-import hello.jdbc.repository.MemberRepositoryV1;
-import hello.jdbc.repository.MemberRepositoryV2;
+import hello.jdbc.repository.MemberRepositoryV3;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.sql.SQLException;
 
@@ -16,13 +17,14 @@ import static org.assertj.core.api.Assertions.*;
 public class MemberServiceTest {
 
     private MemberService memberService;
-    private MemberRepositoryV2 memberRepository; // 트랜잭션 기능 O
+    private MemberRepositoryV3 memberRepository; // 트랜잭션 기능 O
 
     @BeforeEach
     void before() throws SQLException {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(URL, USERNAME, PASSWORD);
-        memberRepository = new MemberRepositoryV2(dataSource);
-        memberService = new MemberService(dataSource, memberRepository);
+        memberRepository = new MemberRepositoryV3(dataSource);
+        PlatformTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
+        memberService = new MemberService(transactionManager, memberRepository);
     }
 
     @AfterEach
