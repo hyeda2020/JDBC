@@ -3,34 +3,39 @@ package hello.jdbc.service;
 
 import hello.jdbc.domain.Member;
 import hello.jdbc.repository.MemberRepositoryV3;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 @Slf4j
-@RequiredArgsConstructor
 public class MemberService {
 
-    private final PlatformTransactionManager transactionManager;
+    private final TransactionTemplate txTemplate;
     private final MemberRepositoryV3 memberRepository;
-    public void accountTransfer(String fromId, String toId, int money) throws SQLException {
-        //트랜잭션 시작
-        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
-        // TransactionStatus : 현재 트랜잭션의 상태 정보가 담겨 있음.
 
-        try {
-            //비즈니스 로직
-            bizLogic(fromId, toId, money);
-            transactionManager.commit(status); // 성공시 커밋
-        } catch (Exception e) {
-            transactionManager.rollback(status); // 실패시 롤백
-            throw new IllegalStateException(e);
-        } // 자원 릴리즈는 트랜잭션 매니저가 알아서 해줌
+    public MemberService(PlatformTransactionManager transactionManager, MemberRepositoryV3 memberRepository) {
+        this.txTemplate = new TransactionTemplate(transactionManager);
+        this.memberRepository = memberRepository;
+    }
+
+    public void accountTransfer(String fromId, String toId, int money) throws SQLException {
+        /**
+         * 트랜잭션 템플릿 적용
+         * 언체크 예외가 발생하면 롤백. 그 외의 경우 (체크 예외가 발생하여도) 커밋 -> 스프링 기본 원칙
+         * 덕분에 커밋/롤백 소스를 서비스에서 제외시킬 수 있다는 장점이 있지만,
+         * 여전히 트랜잭션을 처리하는 기술 로직이 서비스에 포함되어 있다는 단점 존재.
+         */
+        txTemplate.executeWithoutResult((status) -> {
+            try {
+                //비즈니스 로직
+                bizLogic(fromId, toId, money);
+            } catch (SQLException e) { // 체크 예외가 발생하면 언체크 예외를 던져서 롤백되도록
+                throw new IllegalStateException(e);
+            }
+        });
     }
     private void bizLogic(String fromId, String toId, int money)
             throws SQLException {
