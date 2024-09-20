@@ -46,19 +46,28 @@ public class MemberServiceTest {
      */
     @TestConfiguration
     static class TestConfig{
-        @Bean
-        DataSource dataSource() {
-            return new DriverManagerDataSource(URL, USERNAME, PASSWORD);
-        }
+        /**
+         * DataSource, TransactionManager 자동 등록
+         */
+//        @Bean
+//        DataSource dataSource() {
+//            return new DriverManagerDataSource(URL, USERNAME, PASSWORD);
+//        }
+//
+//        @Bean
+//        PlatformTransactionManager transactionManager() {
+//            return new DataSourceTransactionManager(dataSource());
+//        }
 
-        @Bean
-        PlatformTransactionManager transactionManager() {
-            return new DataSourceTransactionManager(dataSource());
+        private final DataSource dataSource;
+
+        public TestConfig(DataSource dataSource) {
+            this.dataSource = dataSource;
         }
 
         @Bean
         MemberRepositoryV3 memberRepositoryV3() {
-            return new MemberRepositoryV3(dataSource());
+            return new MemberRepositoryV3(dataSource);
         }
 
         @Bean
