@@ -25,6 +25,7 @@ public class MemberService {
         //비즈니스 로직
         bizLogic(fromId, toId, money);
     }
+
     private void bizLogic(String fromId, String toId, int money)
             throws SQLException {
         Member fromMember = memberRepository.findById(fromId);
@@ -34,6 +35,7 @@ public class MemberService {
         validation(toMember);
         memberRepository.update(toId, toMember.getMoney() + money);
     }
+
     private void validation(Member toMember) {
         if (toMember.getMemberId().equals("ex")) {
             throw new IllegalStateException("이체중 예외 발생");
