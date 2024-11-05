@@ -53,7 +53,6 @@ public class UncheckedAppTest {
 
     static class Repository {
         public void call() {
-            
             /**
              *  체크 예외를 잡아서 런타임 예외로 던짐
              */
@@ -75,8 +74,6 @@ public class UncheckedAppTest {
     }
 
     static class RuntimeSQLException extends RuntimeException {
-        public RuntimeSQLException() {
-        }
         public RuntimeSQLException(Throwable cause) {
             super(cause);
         }
