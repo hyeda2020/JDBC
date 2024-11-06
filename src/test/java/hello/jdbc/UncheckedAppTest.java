@@ -59,6 +59,11 @@ public class UncheckedAppTest {
             try {
                 runSQL();
             } catch (SQLException e) {
+                /**
+                 * 체크 예외 -> 언체크 예외 전환할 때,
+                 * 반드시 기존 예외 객체를 파라미터로 넘겨서 포함시켜줘야
+                 * 상세한 스택 트레이스 확인 가능!!
+                 */
                 throw new RuntimeSQLException(e);
             }
         }
