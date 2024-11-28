@@ -1,7 +1,9 @@
 package hello.jdbc.service;
 
 import hello.jdbc.domain.Member;
+import hello.jdbc.repository.MemberRepository;
 import hello.jdbc.repository.MemberRepositoryV3;
+import hello.jdbc.repository.MemberRepositoryV4;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.*;
@@ -46,18 +48,6 @@ public class MemberServiceTest {
      */
     @TestConfiguration
     static class TestConfig{
-        /**
-         * DataSource, TransactionManager 자동 등록
-         */
-//        @Bean
-//        DataSource dataSource() {
-//            return new DriverManagerDataSource(URL, USERNAME, PASSWORD);
-//        }
-//
-//        @Bean
-//        PlatformTransactionManager transactionManager() {
-//            return new DataSourceTransactionManager(dataSource());
-//        }
 
         private final DataSource dataSource;
 
@@ -66,13 +56,13 @@ public class MemberServiceTest {
         }
 
         @Bean
-        MemberRepositoryV3 memberRepositoryV3() {
-            return new MemberRepositoryV3(dataSource);
+        MemberRepository memberRepository() {
+            return new MemberRepositoryV4(dataSource);
         }
 
         @Bean
         MemberService memberService() {
-            return new MemberService(memberRepositoryV3());
+            return new MemberService(memberRepository());
         }
     }
 

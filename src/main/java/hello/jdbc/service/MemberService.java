@@ -2,6 +2,7 @@ package hello.jdbc.service;
 
 
 import hello.jdbc.domain.Member;
+import hello.jdbc.repository.MemberRepository;
 import hello.jdbc.repository.MemberRepositoryV3;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +15,9 @@ import java.sql.SQLException;
 @Slf4j
 public class MemberService {
 
-    private final MemberRepositoryV3 memberRepository;
+    private final MemberRepository memberRepository;
 
-    public MemberService(MemberRepositoryV3 memberRepository) {
+    public MemberService(MemberRepository memberRepository) {
         this.memberRepository = memberRepository;
     }
 
