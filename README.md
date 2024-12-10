@@ -48,3 +48,32 @@ JDBC(Java Database Connectivity)는 자바에서 데이터베이스에 접속할
   애플리케이션 로직을 작성하면 됨.  
   스프링에서는 `DriverManager`도 `DataSource`를 통해서 사용할 수 있도록 `DriverManagerDataSource`라는  
   `DataSource`를 구현한 클래스를 제공.  
+
+# 3. 스프링과 트랜잭션
+주로 사용하는 애플리케이션 구조는 프레젠테이션-서비스-데이터 계층 구조이며,  
+특히 여기서 비즈니스 로직이 들어 있는 서비스 계층은 가급적 특정 기술에 의존하지 않고 순수한 자바 코드로 작성되어야  
+추후 기술을 변경하더라도 비즈니스 로직 변경 없이 유지가 가능.  
+
+DB접근 기술에서 가장 중요한 트랜잭션은 비즈니스 로직이 있는 서비스 계층에서 시작하는 것이 좋지만,  
+한편으로는 이로 인해 서비스 계층이 트랜잭션 사용을 위해 아래 그림처럼 `javax.sql.DataSource`, 혹은  
+`java.sql.Connection`와 같은 기술에 의존하게 되는 문제 발생  
+![스크린샷 2024-12-10 211021](https://github.com/user-attachments/assets/56794ddd-ee7b-4674-9668-5c8c53de4dff)
+
+- 트랜잭션 매니저 : 스프링이 제공하는 트랜잭션 매니저는 크게 2가지 역할을 함.  
+1) 트랜잭션 추상화 : 서비스가 특정 트랜잭션 기술에 의존하는 것이 아닌, 추상화된 인터페이스에 의존  
+![스크린샷 2024-12-10 212315](https://github.com/user-attachments/assets/3a0596b9-07e1-46ff-9756-e854f7c173c2)
+
+2) 리소스 동기화 : 트랜잭션을 유지하려면 트랜잭션의 시작부터 끝까지 같은 데이터베이스 커넥션을 유지해야 하지만,
+   트랜잭션 동기화 매니저를 통해 서비스 시작부터 끝까지 커넥션 동기화 가능
+![스크린샷 2024-12-10 212602](https://github.com/user-attachments/assets/9c97a9fb-d09d-4421-bf05-1ed7716ca437)
+
+=> 단, 트랜잭션 매니저를 활용하더라도 여전히 비즈니스 로직에 트랜잭션 기술 소스코드가 포함되어 있다는 문제가 있음.  
+
+- 스프링이 제공하는 트랜잭션 AOP  
+트랜잭션 처리가 필요한 곳에 `@Transactional`애노테이션만 붙여주면, 서비스 계층에서 직접 트랜잭션을 시작하는 로직을 걷어낼 수 있음.   
+```
+@Transactional
+public void accountTransfer(String fromId, String toId, int money) throws SQLException {
+  bizLogic(fromId, toId, money);
+}
+```
