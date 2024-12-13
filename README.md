@@ -78,3 +78,138 @@ public void accountTransfer(String fromId, String toId, int money) throws SQLExc
   bizLogic(fromId, toId, money);
 }
 ```
+
+# 4. 스프링과 문제 해결 - 예외 처리, 반복
+서비스 계층은 가급적 특정 구현 기술에 의존하지 않고, 순수하게 유지하는 것이 좋으며, 이렇게 하려면 예외에 대한 의존도 함께 해결해야 함.  
+예를 들어서 서비스가 처리할 수 없는 `SQLException`에 대한 의존을 제거하려면  
+리포지토리가 던지는 `SQLException` 체크 예외를 런타임 예외로 전환해서 서비스 계층에 던짐으로써  
+서비스 계층이 해당 예외를 무시하게 하여 특정 구현 기술에 의존하는 부분을 제거 가능.  
+
+```
+// MyDbException 런타임 예외
+public class MyDbException extends RuntimeException {
+  public MyDbException() {
+  }
+
+  public MyDbException(String message) {
+  super(message);
+  }
+
+  public MyDbException(String message, Throwable cause) {
+  super(message, cause);
+  }
+
+  public MyDbException(Throwable cause) {
+  super(cause);
+  }
+}
+```  
+```
+/**
+ * 예외 누수 문제 해결
+ * 체크 예외를 런타임 예외로 변경
+ * MemberRepository 인터페이스 사용
+ * throws SQLException 제거
+ */
+public class MemberRepositoryImpl implements MemberRepository {
+  private final DataSource dataSource;
+  public MemberRepositoryImpl(DataSource dataSource) {
+    this.dataSource = dataSource;
+  }
+
+  @Override
+  public Member save(Member member) {
+    String sql = "insert into member(member_id, money) values(?, ?)";
+    Connection con = null;
+    PreparedStatement pstmt = null;
+    try {
+      con = getConnection();
+      pstmt = con.prepareStatement(sql);
+      pstmt.setString(1, member.getMemberId());
+      pstmt.setInt(2, member.getMoney());
+      pstmt.executeUpdate();
+      return member;
+    } catch (SQLException e) { // 체크 예외를 잡아서
+      throw new MyDbException(e); // 언체크 예외로 던짐
+    } finally {
+    close(con, pstmt, null);
+    }
+  }
+  ... 이하 생략 ...
+}
+```  
+```
+/**
+ * MemberRepository 인터페이스에서 SQLException를 던지는 소스 제거 가능
+ */
+public interface MemberRepository {
+  // Member save(Member member) throws SQLException;
+  Member save(Member member);
+  ... 이하 생략 ...
+}
+```
+
+- 스프링 예외 추상화 : 스프링은 데이터 접근 계층에 대한 수십 가지 예외를 정리해서 일관된 예외 계층을 제공하며,  
+  각각의 예외는 특정 기술에 종속적이지 않게 설계되어 있다. 따라서 서비스 계층에서도 스프링이 제공하는 예외를 사용하면 됨.
+  예를 들어서 JDBC 기술을 사용하든, JPA 기술을 사용하든 스프링이 제공하는 예외를 사용하면 됨.  
+  
+  스프링은 데이터베이스에서 발생하는 오류 코드를 스프링이 정의한 예외로 자동으로 변환해주는 변환기를 제공.  
+```
+/**
+ * 스프링 예외 추상화 적용
+ */
+public class MemberRepositoryImpl implements MemberRepository {
+  private final DataSource dataSource;
+  public MemberRepositoryImpl(DataSource dataSource) {
+    this.dataSource = dataSource;
+  }
+
+  @Override
+  public Member save(Member member) {
+    String sql = "insert into member(member_id, money) values(?, ?)";
+    Connection con = null;
+    PreparedStatement pstmt = null;
+    try {
+      con = getConnection();
+      pstmt = con.prepareStatement(sql);
+      pstmt.setString(1, member.getMemberId());
+      pstmt.setInt(2, member.getMoney());
+      pstmt.executeUpdate();
+      return member;
+    } catch (SQLException e) { // 체크 예외를 잡아서
+      SQLExceptionTranslator exTranslator = new SQLErrorCodeSQLExceptionTranslator(dataSource);
+      DataAccessException resultEx = exTranslator.translate(
+        "select", // 읽을 수 있는 설명
+         sql,     // 실행한 SQL
+         e        // 발생된 SQLException 객체
+      );
+    } finally {
+    close(con, pstmt, null);
+    }
+  }
+  ... 이하 생략 ...
+}
+```   
+  이렇게 하면 적절한 스프링 데이터 접근 계층의 예외로 변환해서 반환해줌.   
+  위 예제에서는 SQL 문법이 잘못되었으므로 `BadSqlGrammarException`을 반환.
+
+- JDBC 반복 문제 해결 - JdbcTemplate  
+  리포지토리 메서드마다 다음과 같은 반복 패턴이 존재하며, 이런 반복을 효과적으로 처리하는 방법이 바로 템플릿 콜백 패턴.
+  스프링은 JDBC의 반복 문제를 해결하기 위해 JdbcTemplate 이라는 템플릿을 제공.  
+  1) 커넥션 조회, 커넥션 동기화  
+  2) PreparedStatement 생성 및 파라미터 바인딩  
+  3) 쿼리 실행  
+  4) 결과 바인딩  
+  5) 예외 발생시 스프링 예외 변환기 실행  
+  6) 리소스 종료
+ 
+```
+@Override
+public Member save(Member member) {
+  String sql = "insert into member(member_id, money) values(?, ?)";
+  template.update(sql, member.getMemberId(), member.getMoney());
+  return member;
+}
+```
+  JdbcTemplate은 JDBC로 개발할 때 발생하는 반복을 대부분 해결해 줌. 그 뿐만 아니라 지금까지 학습했던  
+  트랜잭션을 위한 커넥션 동기화는 물론이고, 예외 발생시 스프링 예외 변환기도 자동으로 실행해 줌.  
