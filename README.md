@@ -176,7 +176,7 @@ public class MemberRepositoryImpl implements MemberRepository {
       pstmt.setInt(2, member.getMoney());
       pstmt.executeUpdate();
       return member;
-    } catch (SQLException e) { // 체크 예외를 잡아서
+    } catch (SQLException e) { // 체크 예외를 잡은 후 예외 변환기를 통해 언체크 예외를 던짐
       SQLExceptionTranslator exTranslator = new SQLErrorCodeSQLExceptionTranslator(dataSource);
       DataAccessException resultEx = exTranslator.translate(
         "select", // 읽을 수 있는 설명
